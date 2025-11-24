@@ -130,9 +130,9 @@ export function RequirementDocuments({ requirementId }: RequirementDocumentsProp
     return (
         <Card>
             <CardHeader>
-                <CardTitle className="flex items-center justify-between">
+                <CardTitle className="flex flex-col md:flex-row items-center justify-between gap-4">
                     Documentación
-                    <div>
+                    <div className="w-full md:w-auto">
                         <Input
                             id={`file-upload-${requirementId}`}
                             type="file"
@@ -142,6 +142,7 @@ export function RequirementDocuments({ requirementId }: RequirementDocumentsProp
                         />
                         <Button
                             size="sm"
+                            className="w-full md:w-auto"
                             onClick={() => document.getElementById(`file-upload-${requirementId}`)?.click()}
                             disabled={uploading}
                         >

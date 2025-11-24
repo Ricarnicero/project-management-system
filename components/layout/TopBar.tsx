@@ -1,7 +1,8 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { Bell, LogOut, User, Settings } from "lucide-react"
+import { Bell, LogOut, User, Settings, Menu } from "lucide-react"
+import { ThemeToggle } from "@/components/theme/ThemeToggle"
 import { Button } from "@/components/ui/button"
 import {
     DropdownMenu,
@@ -19,6 +20,8 @@ import {
 import { Badge } from "@/components/ui/badge"
 import { supabase } from "@/lib/supabase"
 import { useRouter } from "next/navigation"
+import { Sheet, SheetContent, SheetTrigger, SheetTitle } from "@/components/ui/sheet"
+import { SidebarContent } from "@/components/layout/Sidebar"
 
 interface Notification {
     id: string
@@ -100,7 +103,20 @@ export function TopBar() {
     }
 
     return (
-        <div className="border-b bg-background px-6 py-3 flex items-center justify-between">
+        <div className="border-b bg-background px-6 py-3 flex items-center justify-between gap-4">
+            <div className="md:hidden">
+                <Sheet>
+                    <SheetTrigger asChild>
+                        <Button variant="ghost" size="icon">
+                            <Menu className="h-5 w-5" />
+                        </Button>
+                    </SheetTrigger>
+                    <SheetContent side="left" className="p-0 w-64">
+                        <SheetTitle className="sr-only">Menú de Navegación</SheetTitle>
+                        <SidebarContent />
+                    </SheetContent>
+                </Sheet>
+            </div>
             <div className="flex-1" />
             <div className="flex items-center gap-4">
                 {/* Notifications */}
@@ -148,6 +164,9 @@ export function TopBar() {
                         </div>
                     </PopoverContent>
                 </Popover>
+
+                {/* Theme Toggle */}
+                <ThemeToggle />
 
                 {/* User Menu */}
                 <DropdownMenu>

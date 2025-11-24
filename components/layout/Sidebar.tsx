@@ -30,12 +30,6 @@ const sidebarItems = [
         variant: "ghost",
     },
     {
-        title: "Proyectos",
-        href: "/dashboard/projects",
-        icon: FolderKanban,
-        variant: "ghost",
-    },
-    {
         title: "Desarrollo",
         href: "/dashboard/dev",
         icon: Code2,
@@ -61,15 +55,15 @@ const sidebarItems = [
     },
 ]
 
-export function Sidebar() {
+export function SidebarContent() {
     const pathname = usePathname()
 
     return (
-        <div className="pb-12 w-64 border-r min-h-screen bg-background flex flex-col">
+        <div className="pb-12 w-full h-full bg-background flex flex-col">
             <div className="space-y-4 py-4 flex-grow">
                 <div className="px-3 py-2">
                     <h2 className="mb-2 px-4 text-lg font-semibold tracking-tight">
-                        Gestión de Proyectos
+                        Gestión de Requerimientos
                     </h2>
                     <div className="space-y-1">
                         {sidebarItems.map((item) => (
@@ -115,6 +109,14 @@ export function Sidebar() {
                     Cerrar Sesión
                 </Button>
             </div>
+        </div>
+    )
+}
+
+export function Sidebar() {
+    return (
+        <div className="hidden md:flex w-64 border-r min-h-screen bg-background flex-col">
+            <SidebarContent />
         </div>
     )
 }

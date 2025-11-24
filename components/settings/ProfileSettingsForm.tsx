@@ -127,15 +127,15 @@ export function ProfileSettingsForm() {
             <CardContent>
                 <form onSubmit={handleSubmit} className="space-y-6">
                     {/* Avatar */}
-                    <div className="flex items-center gap-6">
+                    <div className="flex flex-col md:flex-row items-center gap-6">
                         <Avatar className="h-24 w-24">
                             <AvatarImage src={profile.avatar_url} />
                             <AvatarFallback>
                                 <User className="h-12 w-12" />
                             </AvatarFallback>
                         </Avatar>
-                        <div className="flex-1">
-                            <Label htmlFor="avatar" className="cursor-pointer">
+                        <div className="flex-1 text-center md:text-left">
+                            <Label htmlFor="avatar" className="cursor-pointer inline-block">
                                 <div className="flex items-center gap-2">
                                     <Button
                                         type="button"

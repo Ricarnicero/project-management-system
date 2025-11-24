@@ -11,7 +11,7 @@ export default function DashboardPage() {
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
                 <Card>
                     <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                        <CardTitle className="text-sm font-medium">Proyectos Activos</CardTitle>
+                        <CardTitle className="text-sm font-medium">Clientes Activos</CardTitle>
                         <Activity className="h-4 w-4 text-muted-foreground" />
                     </CardHeader>
                     <CardContent>
@@ -56,7 +56,7 @@ export default function DashboardPage() {
                     <CardHeader>
                         <CardTitle>Actividad Reciente</CardTitle>
                         <CardDescription>
-                            Últimas actualizaciones en todos los proyectos.
+                            Últimas actualizaciones en todos los requerimientos.
                         </CardDescription>
                     </CardHeader>
                     <CardContent>
@@ -64,7 +64,7 @@ export default function DashboardPage() {
                             {/* Placeholder for activity feed */}
                             <div className="flex items-center">
                                 <div className="ml-4 space-y-1">
-                                    <p className="text-sm font-medium leading-none">Nuevo proyecto "Alpha" creado</p>
+                                    <p className="text-sm font-medium leading-none">Nuevo cliente "Alpha Corp" agregado</p>
                                     <p className="text-sm text-muted-foreground">hace 2 horas</p>
                                 </div>
                             </div>

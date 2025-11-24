@@ -18,21 +18,9 @@ export interface Client {
     created_at: string
 }
 
-export interface Project {
-    id: string
-    client_id: string
-    name: string
-    description: string
-    status: 'active' | 'completed' | 'on_hold' | 'archived'
-    start_date: string
-    end_date?: string
-    created_at: string
-}
-
 export interface Requirement {
     id: string
-    client_id?: string
-    project_id?: string
+    client_id: string
     title: string
     description: string
     status: 'pending' | 'in_progress' | 'completed' | 'blocked'
@@ -46,11 +34,12 @@ export interface Requirement {
     testing_start_date?: string
     testing_end_date?: string
     client_delivery_date?: string
+    position: number
 }
 
 export interface Documentation {
     id: string
-    project_id: string
+    requirement_id: string
     title: string
     content: string
     type: 'technical' | 'functional' | 'user_manual' | 'other'
@@ -59,7 +48,7 @@ export interface Documentation {
 
 export interface Alert {
     id: string
-    project_id: string
+    requirement_id: string
     message: string
     type: 'info' | 'warning' | 'error' | 'success'
     created_at: string
@@ -85,3 +74,13 @@ export interface AuditLog {
     new_value: string | null
     changed_at: string
 }
+export interface Notification {
+    id: string;
+    user_id: string; // references profiles.id
+    title: string;
+    message: string;
+    link?: string;
+    read: boolean;
+    created_at: string;
+}
+
