@@ -1,15 +1,17 @@
-import { ProfileSettingsForm } from "@/components/settings/ProfileSettingsForm"
+import { StatusManager } from "@/components/settings/StatusManager"
 
 export default function SettingsPage() {
     return (
         <div className="space-y-6">
             <div>
-                <h1 className="text-3xl font-bold tracking-tight">Configuración</h1>
+                <h1 className="text-2xl font-bold tracking-tight">Ajustes</h1>
                 <p className="text-muted-foreground">
-                    Administra tu perfil y preferencias
+                    Configura las opciones generales del sistema.
                 </p>
             </div>
-            <ProfileSettingsForm />
+            <div className="grid gap-6">
+                <StatusManager />
+            </div>
         </div>
     )
 }

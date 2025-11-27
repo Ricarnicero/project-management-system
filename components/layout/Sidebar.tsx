@@ -89,9 +89,11 @@ export function SidebarContent() {
                         Configuración
                     </h2>
                     <div className="space-y-1">
-                        <Button variant="ghost" className="w-full justify-start">
-                            <Settings className="mr-2 h-4 w-4" />
-                            Ajustes
+                        <Button variant="ghost" className="w-full justify-start" asChild>
+                            <Link href="/dashboard/settings">
+                                <Settings className="mr-2 h-4 w-4" />
+                                Ajustes
+                            </Link>
                         </Button>
                     </div>
                 </div>

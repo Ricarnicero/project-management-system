@@ -4,12 +4,13 @@ import { useEffect, useState } from "react"
 import Link from "next/link"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { Requirement, UserProfile } from "@/types"
+import { Requirement, UserProfile, RequirementStatus } from "@/types"
 import { supabase } from "@/lib/supabase"
 import { Loader2, ExternalLink } from "lucide-react"
 import { CreateRequirementDialog } from "@/components/requirements/CreateRequirementDialog"
 import { Button } from "@/components/ui/button"
 import { DragDropContext, Droppable, Draggable, DropResult } from "@hello-pangea/dnd"
+import { createAuditLog } from "@/lib/auditLog"
 
 interface RequirementBoardProps {
     clientId: string
@@ -17,22 +18,55 @@ interface RequirementBoardProps {
 
 export function RequirementBoard({ clientId }: RequirementBoardProps) {
     const [requirements, setRequirements] = useState<Requirement[]>([])
+    const [statuses, setStatuses] = useState<RequirementStatus[]>([])
     const [loading, setLoading] = useState(true)
     const [users, setUsers] = useState<Record<string, UserProfile>>({})
 
-    const fetchRequirements = async () => {
+    const fetchData = async () => {
         setLoading(true)
         try {
-            const { data, error } = await supabase
+            // Fetch statuses
+            const { data: statusData, error: statusError } = await supabase
+                .from("requirement_statuses")
+                .select("*")
+                .order("position", { ascending: true })
+
+            if (statusError) console.error("Error fetching statuses:", statusError)
+
+            // Fallback if no statuses found (e.g. table empty or error)
+            const currentStatuses = statusData?.length ? statusData : [
+                { id: "1", label: "Por Hacer", value: "pending", position: 0, is_default: true, color: "secondary" },
+                { id: "2", label: "En Progreso", value: "in_progress", position: 1, is_default: true, color: "default" },
+                { id: "3", label: "Completado", value: "completed", position: 2, is_default: true, color: "success" },
+            ]
+            setStatuses(currentStatuses)
+
+            // Fetch requirements
+            const { data: reqData, error: reqError } = await supabase
                 .from("requirements")
                 .select("*")
                 .eq("client_id", clientId)
                 .order("position", { ascending: true })
 
-            if (error) {
-                console.error("Error fetching requirements:", error)
+            if (reqError) {
+                console.error("Error fetching requirements:", reqError)
             } else {
-                setRequirements(data || [])
+                setRequirements(reqData || [])
+            }
+
+            // Fetch users
+            const { data: userData, error: userError } = await supabase
+                .from("profiles")
+                .select("*")
+
+            if (userError) {
+                console.error("Error fetching users:", userError)
+            } else {
+                const userMap: Record<string, UserProfile> = {}
+                userData?.forEach((user) => {
+                    userMap[user.id] = user
+                })
+                setUsers(userMap)
             }
         } catch (error) {
             console.error("Error:", error)
@@ -41,34 +75,9 @@ export function RequirementBoard({ clientId }: RequirementBoardProps) {
         }
     }
 
-    const fetchUsers = async () => {
-        try {
-            const { data, error } = await supabase
-                .from("profiles")
-                .select("*")
-
-            if (error) {
-                console.error("Error fetching users:", error)
-            } else {
-                const userMap: Record<string, UserProfile> = {}
-                data?.forEach((user) => {
-                    userMap[user.id] = user
-                })
-                setUsers(userMap)
-            }
-        } catch (error) {
-            console.error("Error:", error)
-        }
-    }
-
     useEffect(() => {
-        fetchUsers()
-        fetchRequirements()
+        fetchData()
     }, [clientId])
-
-    const todo = requirements.filter((r) => r.status === "pending")
-    const inProgress = requirements.filter((r) => r.status === "in_progress")
-    const completed = requirements.filter((r) => r.status === "completed")
 
     const onDragEnd = async (result: DropResult) => {
         const { source, destination, draggableId } = result
@@ -90,7 +99,7 @@ export function RequirementBoard({ clientId }: RequirementBoardProps) {
 
         // If moving to a different list
         if (source.droppableId !== destination.droppableId) {
-            const newStatus = destination.droppableId as Requirement["status"]
+            const newStatus = destination.droppableId
 
             // Optimistic update
             const updatedReqs = newRequirements.map((r) =>
@@ -108,6 +117,18 @@ export function RequirementBoard({ clientId }: RequirementBoardProps) {
                 console.error("Error updating status:", error)
                 setRequirements(requirements)
             } else {
+                // Log the change
+                // Find status labels for logging
+                const oldStatusLabel = statuses.find(s => s.value === draggedReq.status)?.label || draggedReq.status
+                const newStatusLabel = statuses.find(s => s.value === newStatus)?.label || newStatus
+
+                await createAuditLog(
+                    draggedReq.id,
+                    "status",
+                    oldStatusLabel,
+                    newStatusLabel
+                )
+
                 // Send notification if assigned
                 if (draggedReq.assigned_to) {
                     const { error: notifError } = await supabase
@@ -116,7 +137,7 @@ export function RequirementBoard({ clientId }: RequirementBoardProps) {
                             {
                                 user_id: draggedReq.assigned_to,
                                 title: "Estado de requerimiento actualizado",
-                                message: `El requerimiento "${draggedReq.title}" ha cambiado a ${newStatus}`,
+                                message: `El requerimiento "${draggedReq.title}" ha cambiado a ${newStatusLabel}`,
                                 link: `/dashboard/requirements/${draggedReq.id}`,
                             },
                         ])
@@ -128,7 +149,7 @@ export function RequirementBoard({ clientId }: RequirementBoardProps) {
             }
         } else {
             // Reordering in same list
-            const status = source.droppableId as Requirement["status"]
+            const status = source.droppableId
             const sublist = newRequirements.filter((r) => r.status === status)
             const [moved] = sublist.splice(source.index, 1)
             sublist.splice(destination.index, 0, moved)
@@ -142,8 +163,6 @@ export function RequirementBoard({ clientId }: RequirementBoardProps) {
             setRequirements(finalReqs)
 
             // Persist positions
-            // We only need to update the items that changed position, but for simplicity we can update the whole sublist
-            // Or better, just update the ones in the sublist
             for (const req of updatedSublist) {
                 await supabase
                     .from("requirements")
@@ -164,112 +183,55 @@ export function RequirementBoard({ clientId }: RequirementBoardProps) {
                 />
             </div>
             <DragDropContext onDragEnd={onDragEnd}>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="flex gap-4 overflow-x-auto pb-4 items-start h-auto">
                     {loading ? (
-                        <div className="col-span-3 flex justify-center p-8">
+                        <div className="w-full flex justify-center p-8">
                             <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
                         </div>
-                    ) : requirements.length === 0 ? (
-                        <div className="col-span-3 text-center p-8 border rounded-lg bg-muted/10">
+                    ) : requirements.length === 0 && statuses.length === 0 ? (
+                        <div className="w-full text-center p-8 border rounded-lg bg-muted/10">
                             <p className="text-muted-foreground">No hay requerimientos registrados.</p>
                         </div>
                     ) : (
                         <>
-                            <Droppable droppableId="pending">
-                                {(provided) => (
-                                    <div
-                                        {...provided.droppableProps}
-                                        ref={provided.innerRef}
-                                        className="space-y-4"
-                                    >
-                                        <h3 className="font-semibold text-lg flex items-center justify-between">
-                                            Por Hacer
-                                            <Badge variant="secondary">{todo.length}</Badge>
-                                        </h3>
-                                        {todo.map((req, index) => (
-                                            <Draggable key={req.id} draggableId={req.id} index={index}>
-                                                {(provided) => (
-                                                    <div
-                                                        ref={provided.innerRef}
-                                                        {...provided.draggableProps}
-                                                        {...provided.dragHandleProps}
-                                                    >
-                                                        <RequirementCard
-                                                            requirement={req}
-                                                            users={users}
-                                                        />
-                                                    </div>
-                                                )}
-                                            </Draggable>
-                                        ))}
-                                        {provided.placeholder}
-                                    </div>
-                                )}
-                            </Droppable>
-
-                            <Droppable droppableId="in_progress">
-                                {(provided) => (
-                                    <div
-                                        {...provided.droppableProps}
-                                        ref={provided.innerRef}
-                                        className="space-y-4"
-                                    >
-                                        <h3 className="font-semibold text-lg flex items-center justify-between">
-                                            En Progreso
-                                            <Badge variant="secondary">{inProgress.length}</Badge>
-                                        </h3>
-                                        {inProgress.map((req, index) => (
-                                            <Draggable key={req.id} draggableId={req.id} index={index}>
-                                                {(provided) => (
-                                                    <div
-                                                        ref={provided.innerRef}
-                                                        {...provided.draggableProps}
-                                                        {...provided.dragHandleProps}
-                                                    >
-                                                        <RequirementCard
-                                                            requirement={req}
-                                                            users={users}
-                                                        />
-                                                    </div>
-                                                )}
-                                            </Draggable>
-                                        ))}
-                                        {provided.placeholder}
-                                    </div>
-                                )}
-                            </Droppable>
-
-                            <Droppable droppableId="completed">
-                                {(provided) => (
-                                    <div
-                                        {...provided.droppableProps}
-                                        ref={provided.innerRef}
-                                        className="space-y-4"
-                                    >
-                                        <h3 className="font-semibold text-lg flex items-center justify-between">
-                                            Completado
-                                            <Badge variant="secondary">{completed.length}</Badge>
-                                        </h3>
-                                        {completed.map((req, index) => (
-                                            <Draggable key={req.id} draggableId={req.id} index={index}>
-                                                {(provided) => (
-                                                    <div
-                                                        ref={provided.innerRef}
-                                                        {...provided.draggableProps}
-                                                        {...provided.dragHandleProps}
-                                                    >
-                                                        <RequirementCard
-                                                            requirement={req}
-                                                            users={users}
-                                                        />
-                                                    </div>
-                                                )}
-                                            </Draggable>
-                                        ))}
-                                        {provided.placeholder}
-                                    </div>
-                                )}
-                            </Droppable>
+                            {statuses.map((status) => {
+                                const statusReqs = requirements.filter(r => r.status === status.value)
+                                return (
+                                    <Droppable key={status.id} droppableId={status.value}>
+                                        {(provided) => (
+                                            <div
+                                                {...provided.droppableProps}
+                                                ref={provided.innerRef}
+                                                className="space-y-4 min-w-[300px] w-[300px] flex-shrink-0 bg-muted/10 p-3 rounded-lg border"
+                                            >
+                                                <h3 className="font-semibold text-lg flex items-center justify-between mb-2">
+                                                    {status.label}
+                                                    <Badge variant={status.color as any || "secondary"}>{statusReqs.length}</Badge>
+                                                </h3>
+                                                <div className="space-y-3 overflow-y-auto max-h-[calc(100vh-280px)] pr-1">
+                                                    {statusReqs.map((req, index) => (
+                                                        <Draggable key={req.id} draggableId={req.id} index={index}>
+                                                            {(provided) => (
+                                                                <div
+                                                                    ref={provided.innerRef}
+                                                                    {...provided.draggableProps}
+                                                                    {...provided.dragHandleProps}
+                                                                >
+                                                                    <RequirementCard
+                                                                        requirement={req}
+                                                                        users={users}
+                                                                    />
+                                                                </div>
+                                                            )}
+                                                        </Draggable>
+                                                    ))}
+                                                    {provided.placeholder}
+                                                </div>
+                                            </div>
+                                        )}
+                                    </Droppable>
+                                )
+                            })}
                         </>
                     )}
                 </div>

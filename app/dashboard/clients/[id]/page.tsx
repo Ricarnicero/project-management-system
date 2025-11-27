@@ -70,7 +70,7 @@ export default function ClientDetailPage() {
                 </div>
             </div>
 
-            <div className="space-y-4">
+            <div className="">
                 <h2 className="text-xl font-semibold">Requerimientos</h2>
                 <RequirementBoard clientId={client.id} />
             </div>

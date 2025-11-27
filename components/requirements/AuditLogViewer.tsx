@@ -16,19 +16,37 @@ export function AuditLogViewer({ requirementId }: AuditLogViewerProps) {
     const [logs, setLogs] = useState<AuditLog[]>([])
     const [users, setUsers] = useState<Record<string, UserProfile>>({})
     const [loading, setLoading] = useState(true)
+    const [page, setPage] = useState(1)
+    const [totalCount, setTotalCount] = useState(0)
+    const pageSize = 5
 
     useEffect(() => {
         fetchLogs()
         fetchUsers()
-    }, [requirementId])
+    }, [requirementId, page])
 
     const fetchLogs = async () => {
         try {
+            setLoading(true)
+            // Get total count first
+            const { count, error: countError } = await supabase
+                .from("requirement_audit_logs")
+                .select("*", { count: "exact", head: true })
+                .eq("requirement_id", requirementId)
+
+            if (countError) throw countError
+            setTotalCount(count || 0)
+
+            // Get paginated data
+            const from = (page - 1) * pageSize
+            const to = from + pageSize - 1
+
             const { data, error } = await supabase
                 .from("requirement_audit_logs")
                 .select("*")
                 .eq("requirement_id", requirementId)
                 .order("changed_at", { ascending: false })
+                .range(from, to)
 
             if (error) throw error
             setLogs(data || [])
@@ -75,7 +93,9 @@ export function AuditLogViewer({ requirementId }: AuditLogViewerProps) {
         return labels[fieldName] || fieldName
     }
 
-    if (loading) {
+    const totalPages = Math.ceil(totalCount / pageSize)
+
+    if (loading && logs.length === 0) {
         return (
             <div className="flex justify-center py-8">
                 <Loader2 className="h-6 w-6 animate-spin" />
@@ -83,7 +103,7 @@ export function AuditLogViewer({ requirementId }: AuditLogViewerProps) {
         )
     }
 
-    if (logs.length === 0) {
+    if (logs.length === 0 && totalCount === 0) {
         return (
             <Card>
                 <CardHeader>
@@ -104,7 +124,7 @@ export function AuditLogViewer({ requirementId }: AuditLogViewerProps) {
                 <CardTitle>Historial de Cambios</CardTitle>
             </CardHeader>
             <CardContent>
-                <div className="space-y-3 max-h-96 overflow-y-auto">
+                <div className="space-y-3">
                     {logs.map((log) => {
                         const user = users[log.user_id]
                         const userName = user?.full_name || user?.email || "Usuario desconocido"
@@ -136,6 +156,30 @@ export function AuditLogViewer({ requirementId }: AuditLogViewerProps) {
                         )
                     })}
                 </div>
+
+                {totalPages > 1 && (
+                    <div className="flex items-center justify-between mt-6 pt-4 border-t">
+                        <p className="text-sm text-muted-foreground">
+                            Página {page} de {totalPages}
+                        </p>
+                        <div className="flex gap-2">
+                            <button
+                                onClick={() => setPage((p) => Math.max(1, p - 1))}
+                                disabled={page === 1}
+                                className="px-3 py-1 text-sm border rounded hover:bg-accent disabled:opacity-50 disabled:cursor-not-allowed"
+                            >
+                                Anterior
+                            </button>
+                            <button
+                                onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                                disabled={page === totalPages}
+                                className="px-3 py-1 text-sm border rounded hover:bg-accent disabled:opacity-50 disabled:cursor-not-allowed"
+                            >
+                                Siguiente
+                            </button>
+                        </div>
+                    </div>
+                )}
             </CardContent>
         </Card>
     )

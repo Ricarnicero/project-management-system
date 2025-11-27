@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { Bell, LogOut, User, Settings, Menu } from "lucide-react"
+import { Bell, LogOut, User, Settings, Menu, Check } from "lucide-react"
 import { ThemeToggle } from "@/components/theme/ThemeToggle"
 import { Button } from "@/components/ui/button"
 import {
@@ -22,6 +22,7 @@ import { supabase } from "@/lib/supabase"
 import { useRouter } from "next/navigation"
 import { Sheet, SheetContent, SheetTrigger, SheetTitle } from "@/components/ui/sheet"
 import { SidebarContent } from "@/components/layout/Sidebar"
+import { toast } from "sonner"
 
 interface Notification {
     id: string
@@ -47,8 +48,18 @@ export function TopBar() {
             .channel('notifications')
             .on('postgres_changes',
                 { event: 'INSERT', schema: 'public', table: 'notifications' },
-                () => {
+                (payload) => {
                     fetchNotifications()
+
+                    // Play sound
+                    const audio = new Audio('/notification.wav')
+                    audio.play().catch(e => console.error("Error playing sound:", e))
+
+                    // Show toast
+                    const newNotification = payload.new as Notification
+                    toast(newNotification.title, {
+                        description: newNotification.message,
+                    })
                 }
             )
             .subscribe()
@@ -97,6 +108,15 @@ export function TopBar() {
         fetchNotifications()
     }
 
+    const handleNotificationClick = async (notification: Notification) => {
+        if (!notification.read) {
+            await markAsRead(notification.id)
+        }
+        if (notification.link) {
+            router.push(notification.link)
+        }
+    }
+
     const handleLogout = async () => {
         await supabase.auth.signOut()
         router.push("/login")
@@ -142,24 +162,51 @@ export function TopBar() {
                                     No hay notificaciones
                                 </p>
                             ) : (
-                                <div className="space-y-2 max-h-96 overflow-y-auto">
-                                    {notifications.map((notification) => (
-                                        <div
-                                            key={notification.id}
-                                            className={`p-3 rounded-lg border cursor-pointer hover:bg-muted/50 ${!notification.read ? "bg-muted/20" : ""
-                                                }`}
-                                            onClick={() => markAsRead(notification.id)}
+                                <>
+                                    <div className="space-y-2 max-h-96 overflow-y-auto">
+                                        {notifications.map((notification) => (
+                                            <div
+                                                key={notification.id}
+                                                className={`p-3 rounded-lg border cursor-pointer hover:bg-muted/50 relative group ${!notification.read ? "bg-sky-50 dark:bg-sky-900/20" : ""
+                                                    }`}
+                                                onClick={() => handleNotificationClick(notification)}
+                                            >
+                                                <div className="pr-8">
+                                                    <p className="font-medium text-sm">{notification.title}</p>
+                                                    <p className="text-xs text-muted-foreground mt-1">
+                                                        {notification.message}
+                                                    </p>
+                                                    <p className="text-xs text-muted-foreground mt-2">
+                                                        {new Date(notification.created_at).toLocaleString("es-ES")}
+                                                    </p>
+                                                </div>
+                                                {!notification.read && (
+                                                    <Button
+                                                        variant="ghost"
+                                                        size="icon"
+                                                        className="absolute top-2 right-2 h-6 w-6  transition-opacity"
+                                                        onClick={(e) => {
+                                                            e.stopPropagation()
+                                                            markAsRead(notification.id)
+                                                        }}
+                                                        title="Marcar como leída"
+                                                    >
+                                                        <Check className="h-3 w-3" />
+                                                    </Button>
+                                                )}
+                                            </div>
+                                        ))}
+                                    </div>
+                                    <div className="pt-2 border-t mt-2">
+                                        <Button
+                                            variant="ghost"
+                                            className="w-full text-xs h-8"
+                                            onClick={() => router.push("/dashboard/notifications")}
                                         >
-                                            <p className="font-medium text-sm">{notification.title}</p>
-                                            <p className="text-xs text-muted-foreground mt-1">
-                                                {notification.message}
-                                            </p>
-                                            <p className="text-xs text-muted-foreground mt-2">
-                                                {new Date(notification.created_at).toLocaleString("es-ES")}
-                                            </p>
-                                        </div>
-                                    ))}
-                                </div>
+                                            Ver todo
+                                        </Button>
+                                    </div>
+                                </>
                             )}
                         </div>
                     </PopoverContent>

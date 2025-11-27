@@ -18,12 +18,21 @@ export interface Client {
     created_at: string
 }
 
+export interface RequirementStatus {
+    id: string
+    label: string
+    value: string
+    position: number
+    is_default: boolean
+    color: string
+}
+
 export interface Requirement {
     id: string
     client_id: string
     title: string
     description: string
-    status: 'pending' | 'in_progress' | 'completed' | 'blocked'
+    status: string
     assigned_to?: string // User ID
     area: Area
     priority: 'low' | 'medium' | 'high' | 'critical'

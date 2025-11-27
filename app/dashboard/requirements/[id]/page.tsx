@@ -10,6 +10,7 @@ import { Loader2, ArrowLeft } from "lucide-react"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { RequirementDocuments } from "@/components/requirements/RequirementDocuments"
+import { AuditLogViewer } from "@/components/requirements/AuditLogViewer"
 
 export default function RequirementDetailsPage() {
     const params = useParams()
@@ -131,6 +132,10 @@ export default function RequirementDetailsPage() {
 
                 <div className="md:col-span-2">
                     <RequirementDocuments requirementId={id} />
+                </div>
+
+                <div className="md:col-span-2">
+                    <AuditLogViewer requirementId={id} />
                 </div>
             </div>
         </div>
